@@ -1,0 +1,6 @@
+[submodule "JUCE"]
+	path = JUCE
+	url = https://github.com/juce-framework/JUCE
+[submodule "libaa"]
+	path = libaa
+	url = https://github.com/jiemojiemo/libaa
