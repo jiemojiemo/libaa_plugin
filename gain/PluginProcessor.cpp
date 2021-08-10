@@ -12,6 +12,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                      #endif
                        )
 {
+    addParameters();
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -86,9 +87,11 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
+    in_block = std::make_unique<libaa::AudioBlock>(2,
+                                                   samplesPerBlock,
+                                                   static_cast<int>(proc.getParameters().size()));
+
+    proc.prepareToPlay(sampleRate, samplesPerBlock);
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -148,8 +151,19 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
-        juce::ignoreUnused (channelData);
-        // ..do something to the data...
+        float* libaa_in_buffer = in_block->audio_buffer.getWriterPointer(static_cast<size_t>(channel));
+        std::copy_n(channelData, buffer.getNumSamples(), libaa_in_buffer);
+    }
+
+    // process
+    proc.process(in_block.get(), in_block.get());
+
+    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    {
+        auto* channelData = buffer.getWritePointer (channel);
+        float* libaa_in_buffer = in_block->audio_buffer.getWriterPointer(static_cast<size_t>(channel));
+
+        std::copy_n(libaa_in_buffer, buffer.getNumSamples(), channelData);
     }
 }
 
@@ -178,6 +192,34 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
     juce::ignoreUnused (data, sizeInBytes);
+}
+
+void AudioPluginAudioProcessor::addParameters() {
+    const libaa::Parameters& params = proc.getParameters();
+    for(auto i = 0u; i < params.size(); ++i)
+    {
+        const libaa::AudioProcessorParameter& libaa_param = params.get(static_cast<int>(i));
+        auto* juce_param = new juce::AudioParameterFloat(
+                libaa_param.getParameterName(),
+                libaa_param.getParameterName(),
+                libaa_param.getMinPlainValue(),
+                libaa_param.getMaxPlainValue(),
+                libaa_param.getDefaultPlainValue());
+
+        juce_param->addListener(this);
+        addParameter(juce_param);
+    }
+}
+
+void AudioPluginAudioProcessor::parameterValueChanged(int parameterIndex, float newValue) {
+    printf("%d %f\n", parameterIndex, newValue);
+
+    in_block->param_changes.at(parameterIndex)->insert({parameterIndex, 0, newValue});
+}
+
+void AudioPluginAudioProcessor::parameterGestureChanged(int parameterIndex, bool gestureIsStarting) {
+    juce::ignoreUnused(parameterIndex);
+    juce::ignoreUnused(gestureIsStarting);
 }
 
 //==============================================================================

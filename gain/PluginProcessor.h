@@ -1,9 +1,13 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "libaa/audio_effect/aa_gain_processor.h"
+#include "libaa/core/aa_audio_block.h"
+#include <memory>
 
 //==============================================================================
-class AudioPluginAudioProcessor  : public juce::AudioProcessor
+class AudioPluginAudioProcessor  : public juce::AudioProcessor,
+                                   public juce::AudioProcessorParameter::Listener
 {
 public:
     //==============================================================================
@@ -42,7 +46,17 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    void parameterValueChanged(int parameterIndex, float newValue) override;
+
+    void parameterGestureChanged(int parameterIndex, bool gestureIsStarting) override;
+
+private:
+    void addParameters();
+
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
+
+    libaa::GainProcessor proc;
+    std::unique_ptr<libaa::AudioBlock> in_block;
 };
