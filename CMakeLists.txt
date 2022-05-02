@@ -10,4 +10,4 @@ add_subdirectory(${LIBAA_SOURCE_DIR} ${CMAKE_BINARY_DIR}/libaa)
 
 add_subdirectory(gain)
 add_subdirectory(schroeder_reverb)
-
+add_subdirectory(moorer_reverb)
